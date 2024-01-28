@@ -17,7 +17,7 @@ def get_azure_repos(pat, org, project, messages):
     headers = {
         'Authorization': f'Basic {pat}'
     }
-    repos_url = f'https://dev.azure.com/{org}/{project}/_apis/git/repositories?api-version=6.0'
+    repos_url = f'https://dev.azure.com/easynextti/JDK/_apis/git/repositories?api-version=6.0'
     try:
         response = requests.get(repos_url, headers=headers)
         response.raise_for_status()
