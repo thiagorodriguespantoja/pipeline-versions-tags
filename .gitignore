@@ -1,0 +1,9 @@
+.env
+venv/
+.pyvenv/
+__pycache__/
+*.pyc
+.vscode/
+pipeline_analysis_logs.txt
+pipeline_analysis_report.json
+pipeline_analysis_report.csv
