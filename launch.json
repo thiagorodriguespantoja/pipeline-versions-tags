@@ -6,7 +6,7 @@
             "type": "python",
             "request": "launch",
             "program": "${file}",
-            "envFile": "${workspaceFolder}/.env"    
+            "envFile": "${workspaceFolder}/.env",   
             "console": "integratedTerminal",
             "env": {
                 "AZURE_DEVOPS_PAT": "sua_personal_access_token",
