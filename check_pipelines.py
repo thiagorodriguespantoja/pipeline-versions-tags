@@ -45,7 +45,6 @@ def get_pipeline_file(pat, org, project, repo_id, messages):
     except requests.exceptions.RequestException as e:
         log_message(messages, f"Erro de rede: {e}")
         return None
-
 def analyze_pipeline(data, repo_name, messages):
     results = {
         'repository': repo_name,
