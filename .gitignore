@@ -15,3 +15,6 @@ pipeline_analysis_logs.txt
 pipeline_analysis_report.json
 pipeline_analysis_report.csv
 
+# Configurações do VSCode e Visual Studio
+.vscode/
+.vs/
