@@ -1,9 +1,17 @@
+# Ambiente Virtual
 .env
 venv/
 .pyvenv/
+
+# Arquivos de Cache Python
 __pycache__/
 *.pyc
+
+# Configurações do VSCode
 .vscode/
+
+# Relatórios e Logs Gerados
 pipeline_analysis_logs.txt
 pipeline_analysis_report.json
 pipeline_analysis_report.csv
+

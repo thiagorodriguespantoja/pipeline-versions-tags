@@ -1,58 +1,64 @@
-from dotenv import load_dotenv
-load_dotenv()
-
 import os
 import requests
 import yaml
 import json
 import csv
+from base64 import b64encode
+from dotenv import load_dotenv
+import logging
+from typing import List, Dict, Any, Optional
 
 # Configurações ajustáveis através de variáveis de ambiente
+load_dotenv()
 personal_access_token = os.getenv('AZURE_DEVOPS_PAT')
 organization_name = os.getenv('AZURE_DEVOPS_ORG')
 project_name = os.getenv('AZURE_DEVOPS_PROJECT')
 
-def log_message(messages, message):
-    print(message)
-    messages.append(message)
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-def get_azure_repos(pat, org, project, messages):
+def log_message(message: str):
+    logging.info(message)
+
+def get_azure_repos(pat: str, org: str, project: str) -> Optional[Dict[str, Any]]:
+    auth = b64encode(f":{pat}".encode()).decode()
     headers = {
-        'Authorization': f'Basic {pat}'
+        'Authorization': f'Basic {auth}'
     }
-    repos_url = f'https://dev.azure.com/easynextti/JDK/_apis/git/repositories?api-version=6.0'
+    repos_url = f'https://dev.azure.com/{org}/{project}/_apis/git/repositories?api-version=6.0'
     try:
         response = requests.get(repos_url, headers=headers)
         response.raise_for_status()
         return response.json()
     except requests.exceptions.HTTPError as err:
-        log_message(messages, f"Erro HTTP: {err}")
+        log_message(f"Erro HTTP: {err}")
     except Exception as e:
-        log_message(messages, f"Erro ao obter repositórios: {e}")
+        log_message(f"Erro ao obter repositórios: {e}")
+    return None
 
-def get_pipeline_file(pat, org, project, repo_id, messages):
+def get_pipeline_file(pat: str, org: str, project: str, repo_id: str) -> Optional[str]:
+    auth = b64encode(f":{pat}".encode()).decode()
     headers = {
-        'Authorization': f'Basic {pat}'
+        'Authorization': f'Basic {auth}'
     }
     file_url = f'https://dev.azure.com/{org}/{project}/_apis/git/repositories/{repo_id}/items?path=/azure-pipelines.yml&api-version=6.0'
     try:
         response = requests.get(file_url, headers=headers)
-        if response.status_code == 200:
-            return response.text
-        else:
-            log_message(messages, f"azure-pipelines.yml não encontrado em {repo_id}")
-            return None
+        response.raise_for_status()
+        return response.text
+    except requests.exceptions.HTTPError as err:
+        log_message(f"Erro HTTP: {err}")
     except requests.exceptions.RequestException as e:
-        log_message(messages, f"Erro de rede: {e}")
-        return None
-def analyze_pipeline(data, repo_name, messages):
+        log_message(f"Erro de rede: {e}")
+    return None
+
+def analyze_pipeline(data: Dict[str, Any], repo_name: str) -> Dict[str, Any]:
     results = {
         'repository': repo_name,
         'git_tag_present': False,
         'continueOnError': []
     }
 
-    def check_step(step, job_name):
+    def check_step(step: Dict[str, Any], job_name: str):
         if step.get('displayName') == 'Git Tag':
             results['git_tag_present'] = True
         if 'continueOnError' in step:
@@ -69,40 +75,34 @@ def analyze_pipeline(data, repo_name, messages):
     return results
 
 def main():
-    messages = []
     if not all([personal_access_token, organization_name, project_name]):
-        log_message(messages, "Erro: As variáveis de ambiente não estão todas definidas.")
+        log_message("Erro: As variáveis de ambiente não estão todas definidas.")
         return
 
     all_results = []
-    repos = get_azure_repos(personal_access_token, organization_name, project_name, messages)
+    repos = get_azure_repos(personal_access_token, organization_name, project_name)
     if repos:
         for repo in repos.get('value', []):
             repo_id = repo['id']
-            file_content = get_pipeline_file(personal_access_token, organization_name, project_name, repo_id, messages)
+            file_content = get_pipeline_file(personal_access_token, organization_name, project_name, repo_id)
             if file_content:
                 try:
                     data = yaml.safe_load(file_content)
-                    analysis_results = analyze_pipeline(data, repo['name'], messages)
+                    analysis_results = analyze_pipeline(data, repo['name'])
                     all_results.append(analysis_results)
                 except yaml.YAMLError as exc:
-                    log_message(messages, f"Erro ao analisar o conteúdo do arquivo {repo['name']}: {exc}")
-    
+                    log_message(f"Erro ao analisar o conteúdo do arquivo {repo['name']}: {exc}")
+
         # Gerando relatórios em formato JSON e CSV
         with open('pipeline_analysis_report.json', 'w') as report_file:
-            json.dump({'results': all_results, 'logs': messages}, report_file, indent=4)
-        
+            json.dump({'results': all_results}, report_file, indent=4)
+
         with open('pipeline_analysis_report.csv', 'w', newline='') as csv_file:
             fieldnames = ['repository', 'git_tag_present', 'continueOnError']
             writer = csv.DictWriter(csv_file, fieldnames=fieldnames)
             writer.writeheader()
             for result in all_results:
                 writer.writerow(result)
-
-        # Salvando logs em um arquivo separado
-        with open('pipeline_analysis_logs.txt', 'w') as log_file:
-            for message in messages:
-                log_file.write(message + '\n')
 
 if __name__ == "__main__":
     main()
